@@ -263,25 +263,26 @@ async def on_message(message):
             for member in members:
                 memNames.append(member.name)
 
-            print(memNames) #print info
+            printMembers = (', '.join(memNames))
+
+            embed = discord.Embed(title="Captain Picker", description="A random captain picker.", color=0xFF6F00)
+            embed.add_field(name="Voice Members", value=printMembers, inline=False)
 
             cap1 = (random.choice(memNames))
 
 
             if len(memNames) > 1:
 
-                secondPick = memNames.remove(cap1)
-                cap2 = (random.choice(secondPick))
+                memNames.remove(cap1)
+                cap2 = (random.choice(memNames))
 
             else:
                 cap2 = "Not Enough Members."
 
-            memNames = (', '.join(memNames))
-
-            embed = discord.Embed(title="Captain Picker", description="A random captain picker.", color=0xFF6F00)
+            
             embed.add_field(name="Captain 1", value=cap1, inline=False)
             embed.add_field(name="Captain 2", value=cap2, inline=False)
-            embed.add_field(name="Voice Members", value=memNames, inline=False)
+            
 
         except Exception:
             embed = discord.Embed(title="Failed", description="Common Bug: If the Bot has been run after people have joined voice, the bot will not see those members.", color=0xFF6F00)
