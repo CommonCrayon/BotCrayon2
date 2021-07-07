@@ -5,9 +5,13 @@ from discord.ext.commands import Bot
 
 import random
 import requests
+import time
 
 guild_subscriptions = True
 fetch_offline_members = True
+
+
+
 
 # =================================================
 
@@ -51,6 +55,12 @@ async def execCommand(command):
 async def changeMap(workshopid):
     with RCON(SERVER_ADDRESS, PASSWORD) as rcon:
         command = ("host_workshop_map " + str(workshopid))
+        return (rcon(command))
+
+async def warmupTime():
+    with RCON(SERVER_ADDRESS, PASSWORD) as rcon:
+        time.sleep(100)
+        command = ("mp_warmuptime 9999")
         return (rcon(command))
 
 
@@ -97,12 +107,50 @@ def get_mapinfo(workshopid):
 client = discord.Client()
 
 
+
 # Initiating the BotCrayon.
 @client.event
 async def on_ready():
     print("We have logged in as {0.user}".format(client))
     game = discord.Game("10 Mans")
     await client.change_presence(status=discord.Status.online, activity=game)
+
+
+
+@tasks.loop(minutes=1.0)
+async def timer(scheduleMsg, countdown, time):
+    import datetime
+
+    utcTime = datetime.datetime.utcnow()
+    cestTime = ("{:d}:{:02d}".format(utcTime.hour+2, utcTime.minute))
+
+    cest = list(cestTime.split(":"))
+    schTime = list(time.split(":"))
+
+    minCountdown = ((int(schTime[0])*60) + int(schTime[1])) - ((int(cest[0])*60) + int(cest[1]))
+
+    hour = minCountdown // 60
+    minute = minCountdown - hour*60
+
+    countdown = ("%d:%02d" % (hour, minute))
+
+    UpdatedEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
+    UpdatedEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
+    UpdatedEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
+    UpdatedEmbed.add_field(name="Countdown:", value="Starting in " + countdown, inline=False)
+    UpdatedEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.")
+
+    await scheduleMsg.edit(embed=UpdatedEmbed)
+
+    if hour == 0 and minute == 0:
+        UpdatedEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
+        UpdatedEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
+        UpdatedEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
+        UpdatedEmbed.add_field(name="Countdown:", value="Now!", inline=False)
+        UpdatedEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.")
+
+        await scheduleMsg.edit(embed=UpdatedEmbed)
+        timer.stop()
 
 
 
@@ -171,12 +219,22 @@ async def on_message(message):
                 except Exception:
                     embed = discord.Embed(title="Successfully Changed Map to: " + str(workshopid), color=0xFF6F00)
 
+
                 channel = client.get_channel(mainChannel)
                 await channel.send(embed=embed)
+
+                
             
             except Exception:
                 channel = client.get_channel(mainChannel)
                 await channel.send("Failed Change Map to: " + workshopid)
+
+            try:
+                await warmupTime()
+            
+            except Exception:
+                channel = client.get_channel(mainChannel)
+                await channel.send("Failed to Extend Warmup Map.")
 
         else:
             channel = client.get_channel(mainChannel)
@@ -285,12 +343,80 @@ async def on_message(message):
             
 
         except Exception:
-            embed = discord.Embed(title="Failed", description="Common Bug: If the Bot has been run after people have joined voice, the bot will not see those members.", color=0xFF6F00)
+            embed = discord.Embed(title="Failed", color=0xFF6F00)
 
         channel = client.get_channel(mainChannel)
-        await channel.send(embed=embed)        
+        await channel.send(embed=embed)
 
 
+
+    if message.content.startswith(">getstats "):
+
+        workshopid = message.content[10:]
+
+        channel = client.get_channel(843598844758982666)
+        teamA = channel.members
+
+        channel = client.get_channel(832598037598961684)
+        teamB = channel.members
+
+        teamAList = []
+        for playerA in teamA:
+            teamAList.append(playerA.name)
+
+        printTeamA = (', '.join(teamAList))
+
+        teamBList = []
+        for playerB in teamB:
+            teamBList.append(playerB.name)
+
+        printTeamB = (', '.join(teamBList))
+
+        (name, workshop_link, thumbnail, filename) = get_mapinfo(workshopid)
+
+        print(name, teamAList, teamBList)
+
+
+
+        embed = discord.Embed(title="10 Man", description=name, color=0xFF6F00)
+        embed.set_image(url=thumbnail)
+        embed.add_field(name="Team A", value=printTeamA, inline=True)
+        embed.add_field(name="Team B", value=printTeamB, inline=True)
+
+        channel = client.get_channel(mainChannel)
+        await channel.send(embed=embed)
+
+
+
+    if message.content.startswith(">schedule "):
+
+        userid = message.author.id
+        time = message.content[10:]
+        access = userid in admin
+        
+        if access == True:
+
+            countdown = ("%d:%02d" % (0, 0))
+            
+            ScheduleEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
+            ScheduleEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
+            ScheduleEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
+            ScheduleEmbed.add_field(name="Countdown:", value="Starting in " + countdown, inline=False)
+            ScheduleEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.")
+
+            channel = client.get_channel(843111309058899998)
+            scheduleMsg = await channel.send("<@&843565546004021297>", embed=ScheduleEmbed)
+
+            await scheduleMsg.add_reaction('👍')
+            await scheduleMsg.add_reaction('👎')
+
+            timer.start(scheduleMsg, countdown, time)
+
+
+
+        else:
+            channel = client.get_channel(843111309058899998)
+            await channel.send("Access Denied.")
 
 
 
