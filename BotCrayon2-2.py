@@ -4,8 +4,6 @@ from discord.ext.commands import Bot
 
 import random
 import requests
-import time
-from requests.api import get
 
 guild_subscriptions = True
 fetch_offline_members = True
@@ -18,8 +16,8 @@ serverBot = 854653166842150922
 # 10-Man Channel
 mainChannel = 843111309058899998
 
-# CommonCrayon, Thisted, Cktos
-admin = [277360174371438592, 114714586799800323, 335786316782501888]
+# CommonCrayon, Thisted, Cktos, Karl
+admin = [277360174371438592, 114714586799800323, 335786316782501888, 342426491675738115]
 
 
 serverip_file = open("serverip.txt")
@@ -38,8 +36,7 @@ PASSWORD = rconPassword
 
 async def execCommand(command):
     with RCON(SERVER_ADDRESS, PASSWORD) as rcon:
-        response = (rcon(command))[0:764]
-        return response
+        return (rcon(command))
 
 async def changeMap(workshopid):
     with RCON(SERVER_ADDRESS, PASSWORD) as rcon:
@@ -49,9 +46,23 @@ async def changeMap(workshopid):
 # =================================================
 
 
-async def getID():
-    import uuid
-    return (uuid.uuid1())
+async def getMap():
+    try:
+        response = await execCommand("status")
+
+        for item in response.split("\n"):
+            if "map" in item:
+                lineMap = item.strip()
+            
+        mapDetails = (lineMap.split("/"))
+        workshopid = mapDetails[1]
+        mapname = mapDetails[2]
+
+        return(workshopid, mapname)
+    
+    except:
+        import uuid
+        return ("Failed!",uuid.uuid1())
 
 
 
@@ -78,43 +89,37 @@ def get_mapinfo(workshopid):
         print("Failed to Get Map Data of " + str(workshopid))
 
 
-def retry(retryAttempts):
-    import time
-    time.sleep(1)
-    retryAttempts += 1
-    return (retryAttempts)
 
-
-
-async def demo_start(retryAttempts):
+#====== >START ====================================================================================================
+async def demo_start():
     try:
+        (workshopid, mapname) = await getMap()
+        await execCommand("tv_record " + mapname)
 
-        # Demo Start
-        demoid = await getID()
-        print(demoid)
-        response = await execCommand("tv_record " + str(demoid))
-        DemoEmbed = discord.Embed(title="Demo Started as: " + str(demoid), description=response, color=0xFF6F00)
+        DemoEmbed = discord.Embed(title="Demo Started", description="Demo Name: " + mapname, color=0xFF6F00)
         channel = client.get_channel(serverBot)
+
         await channel.send(embed=DemoEmbed)
 
-
     except:
-        retryAttempts = retry(retryAttempts)
-
-        if retryAttempts != 5:
-
-            channel = client.get_channel(serverBot)
-            await channel.send("Failed to Start Demo. Retrying...")  
-
-            time.sleep(1)
-            await demo_start(retryAttempts)
-        
-        else:
-            channel = client.get_channel(serverBot)
-            await channel.send("Failed to Start Demo.")
+        channel = client.get_channel(serverBot)
+        await channel.send("Failed to Start Demo.")
 
 
-async def get_stats(retryAttempts):
+
+async def end_warmup():
+    try:
+        await execCommand("mp_warmup_end")
+        warmupEndEmbed = discord.Embed(title="Warmup Ended", color=0xFF6F00)
+        channel = client.get_channel(serverBot)
+        await channel.send(embed=warmupEndEmbed) 
+    except:
+        channel = client.get_channel(serverBot)
+        await channel.send("Failed Warmup End.")
+
+
+
+async def get_stats():
     try:
         # Get Stats
         channel = client.get_channel(843598844758982666)
@@ -135,8 +140,11 @@ async def get_stats(retryAttempts):
 
         printTeamB = (', '.join(teamBList))
 
+        (workshopid, mapname) = await getMap()
+        (name, workshop_link, thumbnail, filename) = get_mapinfo(workshopid)
 
-        statEmbed = discord.Embed(title="10 Man", color=0xFF6F00)
+        statEmbed = discord.Embed(title="10 Man", description=name, color=0xFF6F00)
+        statEmbed.set_image(url=thumbnail)
         statEmbed.add_field(name="Team A", value=printTeamA, inline=True)
         statEmbed.add_field(name="Team B", value=printTeamB, inline=True)
 
@@ -144,19 +152,11 @@ async def get_stats(retryAttempts):
         await channel.send(embed=statEmbed)
 
     except:
+        channel = client.get_channel(serverBot)
+        await channel.send("Match Start Embed Failed.")
 
-        retryAttempts = retry(retryAttempts)
+#====================================================================================================================
 
-        if retryAttempts != 5:
-
-            channel = client.get_channel(serverBot)
-            await channel.send("Match Start Embed Failed. Retrying...")  
-
-            await get_stats(retryAttempts)
-        
-        else:
-            channel = client.get_channel(serverBot)
-            await channel.send("Match Start Embed Failed.")
 
 
 client = discord.Client()
@@ -169,41 +169,6 @@ async def on_ready():
     print("We have logged in as {0.user}".format(client))
     game = discord.Game("10 Mans")
     await client.change_presence(status=discord.Status.online, activity=game)
-
-
-
-@tasks.loop(minutes=1.0)
-async def timer(scheduleMsg, time):
-    import datetime
-
-    utcTime = datetime.datetime.utcnow()
-    cestTime = ("{:d}:{:02d}".format(utcTime.hour+2, utcTime.minute))
-
-    cest = list(cestTime.split(":"))
-    schTime = list(time.split(":"))
-
-    minCountdown = ((int(schTime[0])*60) + int(schTime[1])) - ((int(cest[0])*60) + int(cest[1]))
-
-    hour = minCountdown // 60
-    minute = minCountdown - hour*60
-
-    UpdatedEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
-    UpdatedEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
-    UpdatedEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
-    UpdatedEmbed.add_field(name="Countdown:", value="Starting in " + str(hour) + "H " + str(minute) + "M", inline=False)
-    UpdatedEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.            ")
-
-    await scheduleMsg.edit(embed=UpdatedEmbed)
-
-    if hour == 0 and minute == 0:
-        UpdatedEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
-        UpdatedEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
-        UpdatedEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
-        UpdatedEmbed.add_field(name="Countdown:", value="**Started!**", inline=False)
-        UpdatedEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.            ")
-
-        await scheduleMsg.edit(embed=UpdatedEmbed)
-        timer.stop()
 
 
 
@@ -247,21 +212,11 @@ async def on_message(message):
 
         if (message.channel.id == serverBot) and (userid in admin):
 
-            retryAttempts = 0
-            await demo_start(retryAttempts)
+            await demo_start()
 
-            try:
-                # Warmup End
-                response = await execCommand("mp_warmup_end")
-                warmupEndEmbed = discord.Embed(title="Warmup Ended", description=response, color=0xFF6F00)
-                channel = client.get_channel(serverBot)
-                await channel.send(embed=warmupEndEmbed) 
-            except:
-                channel = client.get_channel(serverBot)
-                await channel.send("Failed Warmup End.")
+            await end_warmup()
 
-            retryAttempts = 0
-            await get_stats(retryAttempts)
+            await get_stats()
 
 
     if message.content.startswith(">end"):
@@ -362,31 +317,6 @@ async def on_message(message):
         await channel.send(embed=embed)
 
 
-    if message.content.startswith(">schedule "):
-
-        userid = message.author.id
-        time = message.content[10:]
-        access = userid in admin
-        
-        if access == True:
-            
-            ScheduleEmbed = discord.Embed(title="10 Man", description="Join a 10 Man!", color=0xFF6F00)
-            ScheduleEmbed.set_thumbnail(url="https://imgur.com/vUG7MDU.png")
-            ScheduleEmbed.add_field(name="Time:", value=time + " CEST", inline=False)
-            ScheduleEmbed.add_field(name="Countdown:", value="Starting in", inline=False)
-            ScheduleEmbed.set_footer(text="👍 or  👎 to join or leave 10 man.            ")
-
-            channel = client.get_channel(843111309058899998)
-            scheduleMsg = await channel.send("<@&843565546004021297>", embed=ScheduleEmbed)
-
-            await scheduleMsg.add_reaction('👍')
-            await scheduleMsg.add_reaction('👎')
-
-            timer.start(scheduleMsg, time)
-
-        else:
-            channel = client.get_channel(843111309058899998)
-            await channel.send("Access Denied.")
 
 
     if message.content.startswith(">help"):
