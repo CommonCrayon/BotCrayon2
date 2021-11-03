@@ -1,8 +1,6 @@
 import discord
 from discord.ext import tasks
 from discord.ext.commands import Bot
-
-import random
 import requests
 
 guild_subscriptions = True
@@ -70,22 +68,6 @@ def get_mapinfo(workshopid):
 
 
 #====== >START ====================================================================================================
-async def demo_start():
-    try:
-        import uuid
-        mapname = uuid.uuid1()
-
-        await execCommand("tv_record " + mapname)
-
-        DemoEmbed = discord.Embed(title="Demo Started", description="Demo Name: " + mapname, color=0xFF6F00)
-        channel = client.get_channel(serverBot)
-
-        await channel.send(embed=DemoEmbed)
-
-    except:
-        channel = client.get_channel(serverBot)
-        await channel.send("Failed to Start Demo.")
-
 
 
 async def end_warmup():
@@ -189,30 +171,10 @@ async def on_message(message):
 
         if (message.channel.id == serverBot) and (userid in admin):
 
-            await demo_start()
-
             await end_warmup()
 
             await get_stats()
 
-
-    if message.content.startswith(">end"):
-
-        userid = message.author.id
-
-        if (message.channel.id == serverBot) and (userid in admin):
-
-            response = await execCommand("tv_stoprecord")
-
-            DemoEndEmbed = discord.Embed(title="Demo Stopped", description=response, color=0xFF6F00)
-
-            channel = client.get_channel(serverBot)
-            await channel.send(embed=DemoEndEmbed)
-
-            GameFinished = discord.Embed(title="Game Finished", color=0xFF6F00)
-
-            channel = client.get_channel(mainChannel)
-            await channel.send(embed=GameFinished)
 
 
     if message.content.startswith(">map "):
@@ -254,64 +216,21 @@ async def on_message(message):
             await channel.send("Permission Denied.")
 
 
-    if message.content.startswith(">captains"):
-
-        try:
-            msgSent = message.channel.id
-            channel = client.get_channel(843598844758982666)
-
-            members = channel.members 
-
-            memNames = []
-            for member in members:
-                memNames.append(member.name)
-
-            printMembers = (', '.join(memNames))
-
-            embed = discord.Embed(title="Captain Picker", description="A random captain picker.", color=0xFF6F00)
-            embed.add_field(name="Voice Members", value=printMembers, inline=False)
-
-            cap1 = (random.choice(memNames))
-
-
-            if len(memNames) > 1:
-
-                memNames.remove(cap1)
-                cap2 = (random.choice(memNames))
-
-            else:
-                cap2 = "Not Enough Members."
-
-            
-            embed.add_field(name="Captain 1", value=cap1, inline=False)
-            embed.add_field(name="Captain 2", value=cap2, inline=False)
-            
-
-        except Exception:
-            embed = discord.Embed(title="Failed", color=0xFF6F00)
-
-        channel = client.get_channel(msgSent)
-        await channel.send(embed=embed)
-
-
 
 
     if message.content.startswith(">help"):
 
-        embed = discord.Embed(title="BotCrayon", description="I am used to reserve the server to the community.", color=0xFF6F00)
+        embed = discord.Embed(title="BotCrayon", description="I am used to send commands to the 10 Man Server", color=0xFF6F00)
         embed.set_thumbnail(url="https://i.imgur.com/laJnwhg.png")
 
         embed.add_field(name=">help", value="Displays this embed.", inline=False)
         
         embed.add_field(name=">commands", value="Displays a list of commands sendable through rcon.", inline=False)
-        embed.add_field(name=">captains", value="Picks Random Captains.", inline=False)
 
         embed.add_field(name="__Admin:__", value="Admin Commands.", inline=False)
 
         embed.add_field(name=">map [WorkshopID]", value="Changes map to Workshop ID", inline=False)
-        embed.add_field(name=">warmup", value="Extends Warrmup Time and Starts Warmup", inline=False)
         embed.add_field(name=">start", value="Starts Game and Records Demo", inline=False)
-        embed.add_field(name=">stop", value="Stops Demo", inline=False)
         
         embed.set_footer(text="BotCrayon made by CommonCrayon")
 
